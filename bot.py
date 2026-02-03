@@ -21,7 +21,6 @@ dp = Dispatcher(storage=MemoryStorage())
 # ===============================
 # КОНСТАНТЫ
 # ===============================
-STUB_MODE = True  # True — заглушка, False — обычный сценарий
 
 DELIVERY_TITLES = {
     "foot": "🧍 Пешком",
@@ -77,7 +76,6 @@ bonus_cities = [
 # ===============================
 
 class Form(StatesGroup):
-    waiting_for_start = State()
     waiting_for_age = State()
     waiting_for_underage = State()
     waiting_for_citizenship = State()
@@ -215,70 +213,83 @@ def delivery_keyboard():
 
 @dp.message(CommandStart())
 async def start(message: types.Message, state: FSMContext):
-    if STUB_MODE:
-        await state.clear()
-        await message.answer(
-            "🍽 В ресторан требуются официанты!\n\n"
-            "— Доход: 4000₽ оклад за смену + чаевые. Выплаты еженедельно\n"
-            "— График: 2/2 (можно выбрать)\n"
-            "— Можно без опыта\n\n"
-            "Пишите в личные сообщения, расскажу подробности!\n"
-            "👉 @sergey_rabota_hr"
-        )
-
-        await message.answer(
-            "🤑 До 8000₽ каждый день!\n"
-            "Гибкий график!\n\n"
-            "🚚 Требуются грузчики и разнорабочие с ежедневной оплатой в Москве. На постоянную или временную работу.\n\n"
-            "💸 С ежедневной оплатой 8000₽\n\n"
-            "📱 Срочный набор, удаленное трудоустройство.\n\n"
-            "🔻Условия читать внимательно:🔻\n\n"
-            "✅ 1) Гибкий и свободный график (работа в удобное время)\n"
-            "✅ 2) Оплата ежедневно по часам 400 до 1000₽/ч в зависимости от заявки (в день от 4000 до 8000₽)\n"
-            "✅ 3) Выплаты поступают ежедневно (без задержек)\n"
-            "✅ 4) Вы сами выбираете себе заказ от 1 до 12 часов\n"
-            "✅ 5) Paбoтaть мoжно в паpе с напарником (в качестве подработки)\n\n"
-            "🔻ОБЯЗАТЕЛЬНО :🔻\n"
-            "✅ 1) Наличие телефона на базе Android (для работы в приложении). Айфон не подойдёт\n"
-            "✅ 2) Готовность к физической нагрузке.\n"
-            "✅ 3) Ответственность, надежность, аккуратность.\n"
-            "✅ 4) От 18 лет, гражданство РФ\n"
-            "✅ 5) Самозанятость в 'Мой налог'\n\n"
-            "‼️Надо соответствовать всем критериям‼️\n\n"
-            "🔻 Что нужно будет делать: 🔻\n"
-            "📌 Переезды, разгрузка грузовых машин, работа на складах и производствах города, разборка/сборка мебели, обязанности разнорабочего, вывоз строительного мусора.\n\n"
-            "✅ Чтобы приступить к работе пишите в лс @IvanFSMasterov\n"
-            "▶️ Выполнить первый заказ и получить деньги Вы сможете уже сегодня"
-        )
-
-        await message.answer(
-            "🔥 РАЗНОРАБОЧИЙ 🔥\n\n"
-            "🪪 РФ (паспорт)\n\n"
-            "💵 2000 на карту — оплата сразу после смены\n\n"
-            "ЧТО ПРЕДСТОИТ ДЕЛАТЬ:\n"
-            "Уборка территории\n\n"
-            "Ⓜ️ Полянка\n"
-            "⏰ 8:00 на 4 часа\n\n"
-            "Записаться👇\n"
-            "@nikita_the_manager"
-        )
-        return
+    await state.clear()
 
     await message.answer(
-            "Узнайте, какие возможности есть для курьеров в вашем городе — всего 3 быстрых вопроса",
-            reply_markup=InlineKeyboardMarkup(
-                inline_keyboard=[
-                    [InlineKeyboardButton(text="Хочу узнать✅", callback_data="start_next")]
-                ]
-            )
+        "👋 Привет!\n\n"
+        "Я информационный бот о работе курьером доставки еды.\n\n"
+        "Здесь можно узнать:\n"
+        "• условия работы\n"
+        "• требования\n"
+        "• формат занятости\n"
+        "• примерный доход в твоём городе\n\n"
+        "Выбери, что хочешь посмотреть 👇",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="📋 Условия работы", callback_data="info_conditions")],
+                [InlineKeyboardButton(text="🛂 Требования", callback_data="info_requirements")],
+                [InlineKeyboardButton(text="💰 Примерный доход", callback_data="calc_income")]
+            ]
         )
-    await state.set_state(Form.waiting_for_start)
+    )
 
+@dp.callback_query(lambda c: c.data == "info_conditions")
+async def info_conditions(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()  # важно: выходим из любых FSM
 
-@dp.callback_query(Form.waiting_for_start, lambda c: c.data == "start_next")
-async def age_question(callback: types.CallbackQuery, state: FSMContext):
     await safe_edit(
-    callback.message,
+        callback.message,
+        "📋 <b>Условия работы курьером</b>\n\n"
+        "• Гибкий график — выбираешь удобные смены\n"
+        "• Можно совмещать с учёбой или основной работой\n"
+        "• Пешком, вело или авто\n"
+        "• Заказы через приложение\n\n"
+        "Доход зависит от города и формата доставки.",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="💰 Посмотреть доход", callback_data="calc_income")],
+                [InlineKeyboardButton(text="⬅ Назад", callback_data="back_to_start")]
+            ]
+        )
+    )
+    await callback.answer()
+
+@dp.callback_query(lambda c: c.data == "info_requirements")
+async def info_requirements(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+
+    await safe_edit(
+        callback.message,
+        "🛂 <b>Требования</b>\n\n"
+        "• Возраст от 18 лет\n"
+        "• Смартфон для работы с заказами\n"
+        "• Возможность оформить самозанятость\n"
+        "• Готовность выполнять доставки\n\n"
+        "Точные условия зависят от города.",
+        parse_mode="HTML",
+        reply_markup=InlineKeyboardMarkup(
+            inline_keyboard=[
+                [InlineKeyboardButton(text="💰 Рассчитать доход", callback_data="calc_income")],
+                [InlineKeyboardButton(text="⬅ Назад", callback_data="back_to_start")]
+            ]
+        )
+    )
+    await callback.answer()
+
+@dp.callback_query(lambda c: c.data == "back_to_start")
+async def back_to_start(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+    await start(callback.message, state)
+    await callback.answer()
+
+@dp.callback_query(lambda c: c.data == "calc_income")
+async def calc_income_entry(callback: types.CallbackQuery, state: FSMContext):
+    await state.clear()
+
+    await safe_edit(
+        callback.message,
+        "Чтобы рассчитать примерный доход, уточним несколько деталей.\n\n"
         "Вам есть 18 лет?",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
@@ -289,12 +300,15 @@ async def age_question(callback: types.CallbackQuery, state: FSMContext):
             ]
         )
     )
+
     await state.set_state(Form.waiting_for_age)
     await callback.answer()
 
-
 @dp.callback_query(Form.waiting_for_age, lambda c: c.data in ("age_yes", "age_no"))
 async def age_answer(callback: types.CallbackQuery, state: FSMContext):
+    if await state.get_state() != Form.waiting_for_age:
+        await callback.answer()
+        return
     if callback.data == "age_no":
         await safe_edit(
     callback.message,
