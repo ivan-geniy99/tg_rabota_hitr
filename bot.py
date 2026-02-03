@@ -217,7 +217,7 @@ def delivery_keyboard():
 # ===============================
 
 @dp.message(CommandStart())
-async def render_start(message: types.Message, *, edit: bool = True):
+async def render_start(message: types.Message):
     text = (
         "👋 Привет!\n\n"
         "Я информационный бот о работе курьером доставки еды.\n\n"
@@ -237,10 +237,7 @@ async def render_start(message: types.Message, *, edit: bool = True):
         ]
     )
 
-    if edit:
-        await safe_edit(message, text, reply_markup=keyboard)
-    else:
-        await message.answer(text, reply_markup=keyboard)
+    await message.answer(text, reply_markup=keyboard)
 
 @dp.callback_query(lambda c: c.data == "info_conditions")
 async def info_conditions(callback: types.CallbackQuery, state: FSMContext):
