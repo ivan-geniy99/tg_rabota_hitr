@@ -218,6 +218,7 @@ def delivery_keyboard():
 
 @dp.message(CommandStart())
 async def render_start(message: types.Message):
+    print("[STEP] Перешёл на стартовый экран")
     text = (
         "👋 Привет!\n\n"
         "Я информационный бот о работе курьером доставки еды.\n\n"
@@ -244,6 +245,7 @@ async def info_buttons(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     
     if callback.data == "info_conditions":
+        print("[STEP] Перешёл на экран 'Условия работы'")
         text = (
             "📋 <b>Условия работы курьером</b>\n\n"
             "• Гибкий график — выбираешь удобные смены\n"
@@ -257,6 +259,7 @@ async def info_buttons(callback: types.CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text="⬅ Назад", callback_data="back_to_start")]
         ]
     else:  # info_requirements
+        print("[STEP] Перешёл на экран 'Требования'")
         text = (
             "🛂 <b>Требования</b>\n\n"
             "• Возраст от 18 лет\n"
@@ -324,6 +327,7 @@ async def age_answer(callback: types.CallbackQuery, state: FSMContext):
         await callback.answer()
         return
     if callback.data == "age_no":
+        print("[STEP] Ответил 'Нет, меньше 18'")
         await safe_edit(
     callback.message,
             "Если тебе есть 16 лет, ты можешь работать курьером в некоторых городах:\n"
@@ -335,13 +339,14 @@ async def age_answer(callback: types.CallbackQuery, state: FSMContext):
         await state.set_state(Form.waiting_for_underage)
         await callback.answer()
         return
-
+    print("[STEP] Ответил 'Да, есть 18+'")
     await safe_edit(
     callback.message,
         "Выберите ваше гражданство",
         reply_markup=citizenship_keyboard()
     )
     await state.set_state(Form.waiting_for_citizenship)
+    print("[STEP] Перешёл на экран выбора гражданства")
     await callback.answer()
 
 @dp.callback_query(Form.waiting_for_underage, lambda c: c.data == "back_to_age")
@@ -363,7 +368,29 @@ async def back_to_age(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(Form.waiting_for_age)
     await callback.answer()
 
+@dp.callback_query(lambda c: c.data == "back_to_start_after_lead")
+async def back_to_start_after_lead(callback: types.CallbackQuery):
+    text = (
+        "Вы снова в меню бота. Здесь можно узнать:\n"
+        "• условия работы\n"
+        "• требования\n"
+        "• примерный доход в твоём городе\n\n"
+        "Выберите опцию 👇"
+    )
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📋 Условия работы", callback_data="info_conditions")],
+            [InlineKeyboardButton(text="🛂 Требования", callback_data="info_requirements")],
+            [InlineKeyboardButton(text="💰 Примерный доход", callback_data="calc_income")]
+        ]
+    )
 
+    await safe_edit(
+        callback.message,
+        text,
+        reply_markup=keyboard
+    )
+    await callback.answer()
 
 # ===============================
 # ГРАЖДАНСТВО → ГОРОДА
@@ -409,6 +436,7 @@ async def citizenship_chosen(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query(Form.waiting_for_city, lambda c: c.data.startswith("cities_page_"))
 async def cities_pagination(callback: types.CallbackQuery, state: FSMContext):
+    print("[STEP] Листает список городов")
     if await state.get_state() != Form.waiting_for_city:
         await callback.answer()
         return
@@ -425,6 +453,7 @@ async def cities_pagination(callback: types.CallbackQuery, state: FSMContext):
 
 @dp.callback_query(Form.waiting_for_city, lambda c: c.data.startswith("city_"))
 async def city_chosen(callback: types.CallbackQuery, state: FSMContext):
+    print("[STEP] Перешёл на экран выбора города")
     if await state.get_state() != Form.waiting_for_city:
         await callback.answer()
         return
@@ -462,29 +491,44 @@ async def send_lead(callback: types.CallbackQuery, state: FSMContext):
     if "city" not in data:
         await callback.answer("Сначала рассчитайте доход", show_alert=True)
         return
-    user = callback.from_user
 
-    await state.update_data(lead_sent=True)
     user = callback.from_user
+    await state.update_data(lead_sent=True)
     save_lead({
         **data,
         "user_id": user.id,
         "username": user.username
     })
 
+    # Клавиатура с кнопкой регистрации и возвратом в начало
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text="📝 Заполнить анкету",
+                    url="https://reg.eda.yandex.ru/?advertisement_campaign=forms_for_agents&user_invite_code=4fd8c46d41724e86a4448b0367951ddb&utm_content=blank"
+                )
+            ],
+            [
+                InlineKeyboardButton(
+                    text="⬅ Вернуться в начало",
+                    callback_data="back_to_start_after_lead"
+                )
+            ]
+        ]
+    )
+
     await safe_edit(
-    callback.message,
+        callback.message,
         "Двигаемся дальше 😊\n\n"
         "➡️ Следующий шаг — короткая анкета и мини-обучение по работе с заказами.\n"
-        "Ничего сложного, обычно занимает 15 минут.\n"
-        "Готовы? Тогда начнём здесь 👇\nhttps://reg.eda.yandex.ru/?advertisement_campaign=forms_for_agents&user_invite_code=4fd8c46d41724e86a4448b0367951ddb&utm_content=blank",
-        parse_mode="HTML"
+        "Ничего сложного, обычно занимает 15 минут.\n",
+        parse_mode="HTML",
+        reply_markup=keyboard
     )
 
     await state.clear()
     await callback.answer()
-
-
 # ===============================
 # ДОХОД И КНОПКИ
 # ===============================
@@ -501,6 +545,7 @@ async def income_flow(callback: types.CallbackQuery, state: FSMContext):
         return
     # Если выбрали формат доставки
     if callback.data.startswith("delivery_"):
+        print("[STEP] Перешёл на экран выбора формата доставки и расчёта дохода")
         delivery_map = {
             "delivery_foot": "foot",
             "delivery_bike": "bike",
@@ -540,7 +585,8 @@ async def income_flow(callback: types.CallbackQuery, state: FSMContext):
         doc_text = DOCUMENTS_BY_CITIZENSHIP.get(citizenship)
         text = (
             f"📍 Город: {city}\n\n"
-            f"💵 Доход курьера ({DELIVERY_TITLES[delivery]}, средний):\n"
+            f"⚠️ Эти цифры приведены для ориентира и могут различаться в зависимости от количества смен, заказов и выбранного формата работы.\n"
+            f"💵 Примерный доход курьера ({DELIVERY_TITLES[delivery]}, средний):\n"
             f"• В день: {day_income} ₽\n"
             f"• В месяц: {month_avg_income} ₽\n"
             f"• Максимум в месяц: {month_max_income} ₽\n\n"
@@ -563,6 +609,7 @@ async def income_flow(callback: types.CallbackQuery, state: FSMContext):
 
     # Если нажали кнопки после расчёта
     if callback.data == "income_bonus":
+        print("[STEP] Открыл бонусы для курьеров")
         await safe_edit(
     callback.message,
             "🎁 <b>Бонусы для курьеров</b>\n\n"
@@ -579,6 +626,7 @@ async def income_flow(callback: types.CallbackQuery, state: FSMContext):
             reply_markup=income_keyboard()
         )
     elif callback.data == "income_faq":
+        print("[STEP] Открыл FAQ")
         await safe_edit(
     callback.message,
             "❓ <b>Частые вопросы</b>\n\n"
@@ -598,6 +646,7 @@ async def income_flow(callback: types.CallbackQuery, state: FSMContext):
             reply_markup=income_keyboard()
         )
     elif callback.data == "income_recalc":
+        print("[STEP] Нажал 'Рассчитать ещё раз'")
         await state.update_data(
             delivery=None,
             day_income=None,
