@@ -239,54 +239,62 @@ async def render_start(message: types.Message):
 
     await message.answer(text, reply_markup=keyboard)
 
-@dp.callback_query(lambda c: c.data == "info_conditions")
-async def info_conditions(callback: types.CallbackQuery, state: FSMContext):
-    await state.clear()  # важно: выходим из любых FSM
-
-    await safe_edit(
-        callback.message,
-        "📋 <b>Условия работы курьером</b>\n\n"
-        "• Гибкий график — выбираешь удобные смены\n"
-        "• Можно совмещать с учёбой или основной работой\n"
-        "• Пешком, вело или авто\n"
-        "• Заказы через приложение\n\n"
-        "Доход зависит от города и формата доставки.",
-        parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="💰 Посмотреть доход", callback_data="calc_income")],
-                [InlineKeyboardButton(text="⬅ Назад", callback_data="back_to_start")]
-            ]
-        )
-    )
-    await callback.answer()
-
-@dp.callback_query(lambda c: c.data == "info_requirements")
-async def info_requirements(callback: types.CallbackQuery, state: FSMContext):
+@dp.callback_query(lambda c: c.data in ["info_conditions", "info_requirements"])
+async def info_buttons(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
-
-    await safe_edit(
-        callback.message,
-        "🛂 <b>Требования</b>\n\n"
-        "• Возраст от 18 лет\n"
-        "• Смартфон для работы с заказами\n"
-        "• Возможность оформить самозанятость\n"
-        "• Готовность выполнять доставки\n\n"
-        "Точные условия зависят от города.",
-        parse_mode="HTML",
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="💰 Рассчитать доход", callback_data="calc_income")],
-                [InlineKeyboardButton(text="⬅ Назад", callback_data="back_to_start")]
-            ]
+    
+    if callback.data == "info_conditions":
+        text = (
+            "📋 <b>Условия работы курьером</b>\n\n"
+            "• Гибкий график — выбираешь удобные смены\n"
+            "• Можно совмещать с учёбой или основной работой\n"
+            "• Пешком, вело или авто\n"
+            "• Заказы через приложение\n\n"
+            "Доход зависит от города и формата доставки."
         )
-    )
+        buttons = [
+            [InlineKeyboardButton(text="💰 Посмотреть доход", callback_data="calc_income")],
+            [InlineKeyboardButton(text="⬅ Назад", callback_data="back_to_start")]
+        ]
+    else:  # info_requirements
+        text = (
+            "🛂 <b>Требования</b>\n\n"
+            "• Возраст от 18 лет\n"
+            "• Смартфон для работы с заказами\n"
+            "• Возможность оформить самозанятость\n"
+            "• Готовность выполнять доставки\n\n"
+            "Точные условия зависят от города."
+        )
+        buttons = [
+            [InlineKeyboardButton(text="💰 Рассчитать доход", callback_data="calc_income")],
+            [InlineKeyboardButton(text="⬅ Назад", callback_data="back_to_start")]
+        ]
+    
+    # Используем edit_message_text — редактируем **нажатое сообщение**
+    await callback.message.edit_text(text, parse_mode="HTML", reply_markup=InlineKeyboardMarkup(inline_keyboard=buttons))
     await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "back_to_start")
 async def back_to_start(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
-    await render_start(callback.message, edit=True)
+    text = (
+        "👋 Привет!\n\n"
+        "Я информационный бот о работе курьером доставки еды.\n\n"
+        "Здесь можно узнать:\n"
+        "• условия работы\n"
+        "• требования\n"
+        "• формат занятости\n"
+        "• примерный доход в твоём городе\n\n"
+        "Выбери, что хочешь посмотреть 👇"
+    )
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📋 Условия работы", callback_data="info_conditions")],
+            [InlineKeyboardButton(text="🛂 Требования", callback_data="info_requirements")],
+            [InlineKeyboardButton(text="💰 Примерный доход", callback_data="calc_income")]
+        ]
+    )
+    await callback.message.answer(text, reply_markup=keyboard)
     await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "calc_income")
