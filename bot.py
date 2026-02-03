@@ -81,7 +81,6 @@ class Form(StatesGroup):
     waiting_for_citizenship = State()
     waiting_for_city = State()
     waiting_for_delivery = State()
-
 # ===============================
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ
 # ===============================
@@ -89,7 +88,10 @@ async def safe_edit(message, text, **kwargs):
     try:
         await message.edit_text(text, **kwargs)
     except TelegramBadRequest as e:
-        if "message is not modified" in str(e):
+        if any(x in str(e) for x in (
+            "message is not modified",
+            "message can't be edited"
+        )):
             pass
         else:
             raise
@@ -98,7 +100,10 @@ async def safe_edit_markup(message, reply_markup):
     try:
         await message.edit_reply_markup(reply_markup=reply_markup)
     except TelegramBadRequest as e:
-        if "message is not modified" in str(e):
+        if any(x in str(e) for x in (
+            "message is not modified",
+            "message can't be edited"
+        )):
             pass
         else:
             raise
@@ -212,10 +217,8 @@ def delivery_keyboard():
 # ===============================
 
 @dp.message(CommandStart())
-async def start(message: types.Message, state: FSMContext):
-    await state.clear()
-
-    await message.answer(
+async def render_start(message: types.Message, *, edit: bool = True):
+    text = (
         "👋 Привет!\n\n"
         "Я информационный бот о работе курьером доставки еды.\n\n"
         "Здесь можно узнать:\n"
@@ -223,15 +226,21 @@ async def start(message: types.Message, state: FSMContext):
         "• требования\n"
         "• формат занятости\n"
         "• примерный доход в твоём городе\n\n"
-        "Выбери, что хочешь посмотреть 👇",
-        reply_markup=InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(text="📋 Условия работы", callback_data="info_conditions")],
-                [InlineKeyboardButton(text="🛂 Требования", callback_data="info_requirements")],
-                [InlineKeyboardButton(text="💰 Примерный доход", callback_data="calc_income")]
-            ]
-        )
+        "Выбери, что хочешь посмотреть 👇"
     )
+
+    keyboard = InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="📋 Условия работы", callback_data="info_conditions")],
+            [InlineKeyboardButton(text="🛂 Требования", callback_data="info_requirements")],
+            [InlineKeyboardButton(text="💰 Примерный доход", callback_data="calc_income")]
+        ]
+    )
+
+    if edit:
+        await safe_edit(message, text, reply_markup=keyboard)
+    else:
+        await message.answer(text, reply_markup=keyboard)
 
 @dp.callback_query(lambda c: c.data == "info_conditions")
 async def info_conditions(callback: types.CallbackQuery, state: FSMContext):
@@ -280,7 +289,7 @@ async def info_requirements(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query(lambda c: c.data == "back_to_start")
 async def back_to_start(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
-    await start(callback.message, state)
+    await render_start(callback.message, edit=True)
     await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "calc_income")
