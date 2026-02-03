@@ -294,7 +294,7 @@ async def back_to_start(callback: types.CallbackQuery, state: FSMContext):
             [InlineKeyboardButton(text="💰 Примерный доход", callback_data="calc_income")]
         ]
     )
-    await callback.message.answer(text, reply_markup=keyboard)
+    await callback.message.edit_text(text, reply_markup=keyboard)
     await callback.answer()
 
 @dp.callback_query(lambda c: c.data == "calc_income")
@@ -348,6 +348,7 @@ async def age_answer(callback: types.CallbackQuery, state: FSMContext):
 async def back_to_age(callback: types.CallbackQuery, state: FSMContext):
     await safe_edit(
     callback.message,
+        "Чтобы рассчитать примерный доход, уточним несколько деталей.\n\n"
         "Вам есть 18 лет?",
         reply_markup=InlineKeyboardMarkup(
             inline_keyboard=[
